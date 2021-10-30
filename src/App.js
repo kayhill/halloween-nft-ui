@@ -15,7 +15,7 @@ const CONTRACT_ADDRESS = "0xdADC9BbcbB8695307A0c38AD27d5e52B6f91F1b9";
 const App = () => {
   // state variables
   const [currentAccount, setCurrentAccount] = useState("");
-  let currentMintCount = "";
+  const [currentMintCount, setCurrentMintCount] = useState("?");
   const [mintMessage, setMintMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -71,14 +71,15 @@ const App = () => {
         method: "eth_requestAccounts",
       });
 
-      /*
-       * Boom! This should print out public address once we authorize Metamask.
-       */
+      // set current account
       console.log("Connected", accounts[0]);
       setCurrentAccount(accounts[0]);
 
-      setupEventListener();
+      // set current NFT mint count if not already initiated
       checkMintedCount();
+
+      // listen for emit event from contract
+      setupEventListener();
     } catch (error) {
       console.log(error);
     }
@@ -101,7 +102,6 @@ const App = () => {
 
         // THIS IS THE MAGIC SAUCE.
         // This will essentially "capture" our event when our contract throws it.
-        // If you're familiar with webhooks, it's very similar to that!
         connectedContract.on("NewEpicNFTMinted", (from, tokenId) => {
           console.log(from, tokenId.toNumber());
           const message = `We've minted your NFT and sent it to your wallet. It may be blank right now. It can take a max of 10 min to show up on OpenSea. Here's the link: https://testnets.opensea.io/assets/${CONTRACT_ADDRESS}/${tokenId.toNumber()}`;
@@ -132,7 +132,7 @@ const App = () => {
         );
 
         let count = await connectedContract.getTotalMinted();
-        currentMintCount = count.toNumber();
+        setCurrentMintCount(count.toNumber());
       } else {
         console.log("Ethereum object doesn't exist!");
       }
@@ -153,7 +153,8 @@ const App = () => {
           myEpicNft.abi,
           signer
         );
-
+        let message = "";
+        setMintMessage(message);
         console.log("Going to pop wallet now to pay gas...");
         let nftTxn = await connectedContract.makeAnEpicNFT();
         setLoading(true);
@@ -175,6 +176,7 @@ const App = () => {
 
   useEffect(() => {
     checkIfWalletIsConnected();
+    checkMintedCount();
   }, []);
 
   const renderNotConnectedContainer = () => (
@@ -203,7 +205,9 @@ const App = () => {
           <p className="sub-text">
             Each unique. Each spooky. Discover your NFT today.
           </p>
-          <p className="sub-text">{currentMintCount}</p>
+          <p className="sub-text">
+            {currentMintCount} of {TOTAL_MINT_COUNT} minted so far
+          </p>
           <a href={OPENSEA_LINK}>
             <button className="cta-button opensea-button">
               🌊 View Collection on OpenSea
